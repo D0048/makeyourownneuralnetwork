@@ -105,7 +105,7 @@ class DNN:
                                                     labels=self.y))
 
     def activation(self, layer):
-        return tf.nn.relu(layer)
+        return tf.nn.sigmoid(layer)
 
 
 if (__name__ == '__main__'):
@@ -114,12 +114,12 @@ if (__name__ == '__main__'):
 
     with tf.Session() as sess:
         sess.run(init)
-        print(dnn.query([1, 2, 3, 4, 5], sess))
+        print(dnn.query([0.1,0.2,0.3,0.4,0.5], sess))
 
         epoches = 100
         for e in range(epoches):
-            dnn.fit([1, 2, 3, 4, 5], [2, 2, 2, 2, 2], sess)
+            dnn.fit([0.1,0.2,0.3,0.4,0.5], [0.1,0.1,0.1,0.1,0.1], sess)
             pass
-        print(dnn.query([1, 2, 3, 4, 5], sess))
+        print(dnn.query([0.1,0.2,0.3,0.4,0.5], sess))
 
         pass
