@@ -23,27 +23,68 @@ def log(msg, urgency=-1):
 
 class DNN:
     weights = [[[]]]
+    biases = []
+    layers = [10, 10]
+    hiddenlayers = []
+    lr = 0.1
+    x = tf.placeholder(tf.float32, [None, None])
+    y = tf.placeholder(tf.float32, [None, None])
 
-    def __init__(self, hidden=[10, 10], input=784,
-                 lr=0.1):  #hidden[l1_size,l2_size,...,ln_size]
-        assert (hidden, [[int]])
-        last_layer_size = input
-        for i in range(hidden.__len__()):
-            current_layer_size = hidden[i]
-            self.weights.append(
-                tf.Variable(
+    def __init__(self, layers=[3, 2, 4, 5], lr=0.1):
+        #layers[input_size,l1_size,l2_size,...,ln_size,output_size]
+
+        self.input, self.layers, self.lr = input, layers, lr
+        self.biases = tf.random_normal([layers.__len__()], seed=seed)
+
+        last_layer_size = layers[0]
+        self.hiddenlayers.append(tf.placeholder(tf.float32, [1, layers[0]]))
+
+        for i in range(
+                layers.__len__()):  #init all weight[input->hidden->output]
+            if (i != 0):  #not for the input layer
+                #create new weight
+                current_layer_size = layers[i]
+                new_w = tf.Variable(
                     tf.random_normal(
-                        [last_layer_size, current_layer_size], seed=seed)))
-            log("Weight added: [{},{}]".format(last_layer_size,
-                                               current_layer_size))
-            last_layer_size = current_layer_size
+                        [last_layer_size, current_layer_size], seed=seed))
+                #[last_layer_size, current_layer_size], seed=seed))
+                self.weights.append(new_w)
+                log("Weight added: [{}]".format(new_w))
+
+                #create new relation
+                new_hidden = self.hiddenlayers[self.hiddenlayers.__len__() - 1]
+                new_hidden = tf.add(
+                    tf.multiply(new_hidden, new_w),  #?
+                    self.biases[i - 1])
+                new_hidden = self.activation(new_hidden)
+
+                self.hiddenlayers.append(new_hidden)
+
+                last_layer_size = current_layer_size
+                pass
+            pass
+        self.x = tf.placeholder(tf.float32, [None, layers[0]])
+        self.y = tf.placeholder(tf.float32,
+                                [None, layers[layers.__len__() - 1]])
+
+        self.weights = np.asfarray(self.weights)
+
         pass
+
+    pass
+
+    def query(self, x, sess):
+        if (x.__len__() != self.layers):  #check input size
+            raise Exception("Wrong input shape, expected length: {}".format(
+                self.layers[0]))
+            pass
+        return sess.run(self.hiddenlayers[self.hiddenlayers.__len__() - 1])
 
     def fit(self):
         pass
 
-    def query(self):
-        pass
+    def activation(self, layer):
+        return tf.nn.relu(layer)
 
 
 if (__name__ == '__main__'):
