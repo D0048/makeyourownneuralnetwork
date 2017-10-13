@@ -22,7 +22,7 @@ def log(msg, urgency=-1):
 
 
 class DNN:
-    weights = [[[]]]
+    weights = []
     biases = []
     layers = [10, 10]
     hiddenlayers = []
@@ -37,7 +37,7 @@ class DNN:
         self.biases = tf.random_normal([layers.__len__()], seed=seed)
 
         last_layer_size = layers[0]
-        self.hiddenlayers.append(tf.placeholder(1,tf.float32, [layers[0]]))
+        self.hiddenlayers.append(tf.placeholder(tf.float32, [1,layers[0]]))
 
         for i in range(
                 layers.__len__()):  #init all weight[input->hidden->output]
@@ -67,7 +67,7 @@ class DNN:
         self.y = tf.placeholder(tf.float32,
                                 [None, layers[layers.__len__() - 1]])
 
-        self.weights = np.asfarray(self.weights)
+        #self.weights = np.asfarray(self.weights)
 
         pass
 
