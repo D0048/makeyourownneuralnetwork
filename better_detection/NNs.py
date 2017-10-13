@@ -37,7 +37,7 @@ class DNN:
         self.biases = tf.random_normal([layers.__len__()], seed=seed)
 
         last_layer_size = layers[0]
-        self.hiddenlayers.append(tf.placeholder(tf.float32, [1, layers[0]]))
+        self.hiddenlayers.append(tf.placeholder(1,tf.float32, [layers[0]]))
 
         for i in range(
                 layers.__len__()):  #init all weight[input->hidden->output]
@@ -47,14 +47,14 @@ class DNN:
                 new_w = tf.Variable(
                     tf.random_normal(
                         [last_layer_size, current_layer_size], seed=seed))
-                #[last_layer_size, current_layer_size], seed=seed))
                 self.weights.append(new_w)
                 log("Weight added: [{}]".format(new_w))
 
                 #create new relation
                 new_hidden = self.hiddenlayers[self.hiddenlayers.__len__() - 1]
                 new_hidden = tf.add(
-                    tf.multiply(new_hidden, new_w),  #?
+                    tf.matmul(new_hidden, new_w),  #?
+                    #tf.multiply(tf.transpose(new_hidden), new_w),  #?
                     self.biases[i - 1])
                 new_hidden = self.activation(new_hidden)
 
