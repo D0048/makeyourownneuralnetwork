@@ -4,7 +4,7 @@ import numpy as np
 import os
 from scipy.misc import imread
 
-seed = 128
+seed = 129
 rng = np.random.RandomState(seed)
 
 
@@ -24,8 +24,8 @@ def log(msg, urgency=-1):
 class DNN:
     weights = []
     biases = []
-    layers = [10, 10]
-    hiddenlayers = []
+    layers_size = [10, 10]
+    hiddenlayers= []
     lr = 0.1
     x = tf.placeholder(tf.float32, [None, None])
     y = tf.placeholder(tf.float32, [None, None])
@@ -33,11 +33,11 @@ class DNN:
     def __init__(self, layers=[3, 2, 4, 5], lr=0.1):
         #layers[input_size,l1_size,l2_size,...,ln_size,output_size]
 
-        self.input, self.layers, self.lr = input, layers, lr
+        self.input, self.layers_size, self.lr = input, layers, lr
         self.biases = tf.random_normal([layers.__len__()], seed=seed)
 
         last_layer_size = layers[0]
-        self.hiddenlayers.append(tf.placeholder(tf.float32, [1,layers[0]]))
+        self.hiddenlayers.append(tf.placeholder(tf.float32, [1, layers[0]]))
 
         for i in range(
                 layers.__len__()):  #init all weight[input->hidden->output]
@@ -74,11 +74,12 @@ class DNN:
     pass
 
     def query(self, x, sess):
-        if (x.__len__() != self.layers):  #check input size
+        if (x.__len__() != self.layers_size[0]):  #check input size
             raise Exception("Wrong input shape, expected length: {}".format(
-                self.layers[0]))
+                self.layers_size[0]))
             pass
-        return sess.run(self.hiddenlayers[self.hiddenlayers.__len__() - 1])
+        x=np.reshape(x,[1,5])
+        return sess.run(self.hiddenlayers[self.hiddenlayers.__len__() - 1],feed_dict={self.hiddenlayers[0]: x})
 
     def fit(self):
         pass
@@ -88,4 +89,10 @@ class DNN:
 
 
 if (__name__ == '__main__'):
-    dnn = DNN()
+    dnn = DNN(layers=[5, 100, 100, 5], lr=0.1)
+    init = tf.initialize_all_variables()
+
+    with tf.Session() as sess:
+        sess.run(init)
+        print(dnn.query([1,2,3,4,5],sess))
+        pass
