@@ -25,9 +25,8 @@ class DNN:
     weights = []
     biases = []
     layers_size = [10, 10]
-    hiddenlayers= []
+    hiddenlayers = []
     lr = 0.1
-    x = tf.placeholder(tf.float32, [None, None])
     y = tf.placeholder(tf.float32, [None, None])
 
     def __init__(self, layers=[3, 2, 4, 5], lr=0.1):
@@ -51,7 +50,7 @@ class DNN:
                 log("Weight added: [{}]".format(new_w))
 
                 #create new relation
-                new_hidden = self.hiddenlayers[self.hiddenlayers.__len__() - 1]
+                new_hidden = self.hiddenlayers[-1]
                 new_hidden = tf.add(
                     tf.matmul(new_hidden, new_w),  #?
                     #tf.multiply(tf.transpose(new_hidden), new_w),  #?
@@ -63,9 +62,7 @@ class DNN:
                 last_layer_size = current_layer_size
                 pass
             pass
-        self.x = tf.placeholder(tf.float32, [None, layers[0]])
-        self.y = tf.placeholder(tf.float32,
-                                [None, layers[layers.__len__() - 1]])
+        self.y = tf.placeholder(tf.float32, [None, layers[-1]])
 
         #self.weights = np.asfarray(self.weights)
 
@@ -78,11 +75,34 @@ class DNN:
             raise Exception("Wrong input shape, expected length: {}".format(
                 self.layers_size[0]))
             pass
-        x=np.reshape(x,[1,5])
-        return sess.run(self.hiddenlayers[self.hiddenlayers.__len__() - 1],feed_dict={self.hiddenlayers[0]: x})
+        x = np.reshape(x, [1, 5])
+        return sess.run(
+            self.hiddenlayers[-1], feed_dict={self.hiddenlayers[0]: x})
 
-    def fit(self):
+    def fit(self, x, y, sess):
+        if (x.__len__() != self.layers_size[0]  #input check
+                or y.__len__() != self.layers_size[-1]):
+
+            raise Exception("Wrong input shape, expected length: {} \nand: {}".
+                            format(self.layers_size[0], self.layers_size[-1]))
+            pass
+
+        x = np.reshape(x, [1, 5])  #reshapes
+        y = np.reshape(y, [1, 5])
+
+        opt = tf.train.GradientDescentOptimizer(
+            learning_rate=self.lr).minimize(self.cost(x))
+        _, c = sess.run(
+            [opt, self.cost(x)],
+            feed_dict={self.hiddenlayers[0]: x,
+                       self.y: y})
+        log(c)
         pass
+
+    def cost(self, x):
+        return tf.reduce_mean(
+            tf.nn.softmax_cross_entropy_with_logits(logits=self.hiddenlayers[-1],
+                                                    labels=self.y))
 
     def activation(self, layer):
         return tf.nn.relu(layer)
@@ -94,5 +114,12 @@ if (__name__ == '__main__'):
 
     with tf.Session() as sess:
         sess.run(init)
-        print(dnn.query([1,2,3,4,5],sess))
+        print(dnn.query([1, 2, 3, 4, 5], sess))
+
+        epoches = 100
+        for e in range(epoches):
+            dnn.fit([1, 2, 3, 4, 5], [2, 2, 2, 2, 2], sess)
+            pass
+        print(dnn.query([1, 2, 3, 4, 5], sess))
+
         pass
