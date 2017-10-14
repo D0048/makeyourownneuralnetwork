@@ -4,7 +4,7 @@ import numpy as np
 import os
 from scipy.misc import imread
 
-seed = 129
+seed = 121
 rng = np.random.RandomState(seed)
 
 
@@ -51,10 +51,9 @@ class DNN:
 
                 #create new relation
                 new_hidden = self.hiddenlayers[-1]
-                new_hidden = tf.add(
-                    tf.matmul(new_hidden, new_w),  #?
-                    #tf.multiply(tf.transpose(new_hidden), new_w),  #?
-                    self.biases[i - 1])
+                new_hidden =tf.matmul(new_hidden, new_w)
+                #new_hidden = tf.add(
+                #    tf.matmul(new_hidden, new_w), self.biases[i - 1])
                 new_hidden = self.activation(new_hidden)
 
                 self.hiddenlayers.append(new_hidden)
@@ -71,38 +70,40 @@ class DNN:
     pass
 
     def query(self, x, sess):
+        """
         if (x.__len__() != self.layers_size[0]):  #check input size
             raise Exception("Wrong input shape, expected length: {}".format(
                 self.layers_size[0]))
             pass
+        """
         x = np.reshape(x, [1, 5])
         return sess.run(
             self.hiddenlayers[-1], feed_dict={self.hiddenlayers[0]: x})
 
     def fit(self, x, y, sess):
+        """
         if (x.__len__() != self.layers_size[0]  #input check
                 or y.__len__() != self.layers_size[-1]):
 
             raise Exception("Wrong input shape, expected length: {} \nand: {}".
                             format(self.layers_size[0], self.layers_size[-1]))
             pass
-
-        x = np.reshape(x, [1, 5])  #reshapes
-        y = np.reshape(y, [1, 5])
+        """
+        x = np.reshape(x, [1, -1])  #reshapes
+        y = np.reshape(y, [1, -1])
 
         opt = tf.train.GradientDescentOptimizer(
-            learning_rate=self.lr).minimize(self.cost(x))
+            learning_rate=self.lr).minimize(self.cost())
         _, c = sess.run(
-            [opt, self.cost(x)],
-            feed_dict={self.hiddenlayers[0]: x,
-                       self.y: y})
+            [opt, self.cost()], feed_dict={self.hiddenlayers[0]: x,
+                                           self.y: y})
         log(c)
         pass
 
-    def cost(self, x):
+    def cost(self):
         return tf.reduce_mean(
-            tf.nn.softmax_cross_entropy_with_logits(logits=self.hiddenlayers[-1],
-                                                    labels=self.y))
+            tf.nn.sigmoid_cross_entropy_with_logits(
+                logits=[self.hiddenlayers[-1]], labels=[self.y]))
 
     def activation(self, layer):
         return tf.nn.sigmoid(layer)
@@ -112,14 +113,36 @@ if (__name__ == '__main__'):
     dnn = DNN(layers=[5, 100, 100, 5], lr=0.1)
     init = tf.initialize_all_variables()
 
+    i = [0.1, 0.2, 0.3, 0.4, 0.5]
+    i = np.reshape(i, [1, -1])
+
+    o = [0, 0, 0, 0, 1]
+    o = np.reshape(o, [1, -1])
+
     with tf.Session() as sess:
         sess.run(init)
-        print(dnn.query([0.1,0.2,0.3,0.4,0.5], sess))
+
+        print(dnn.query([0.1, 0.2, 0.3, 0.4, 0.5], sess))
+        print(
+            sess.run(dnn.cost(), feed_dict={dnn.y: o,
+                                            dnn.hiddenlayers[0]: i}))
 
         epoches = 100
         for e in range(epoches):
-            dnn.fit([0.1,0.2,0.3,0.4,0.5], [0.1,0.1,0.1,0.1,0.1], sess)
+            dnn.fit([0.1, 0.2, 0.3, 0.4, 0.5], [0, 0, 0, 0, 1], sess)
             pass
-        print(dnn.query([0.1,0.2,0.3,0.4,0.5], sess))
 
+        print(dnn.query([0.1, 0.2, 0.3, 0.4, 0.5], sess))
+
+        print(
+            sess.run(dnn.cost(), feed_dict={dnn.y: o,
+                                            dnn.hiddenlayers[0]: i}))
+
+        dnn.weights[1] = tf.add(tf.Variable(initial_value=0.2), dnn.weights[1])
+
+        log("changed")
+        print(dnn.query(i, sess))
+        print(
+            sess.run(dnn.cost(), feed_dict={dnn.y: o,
+                                            dnn.hiddenlayers[0]: i}))
         pass
