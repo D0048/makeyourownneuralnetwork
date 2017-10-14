@@ -52,9 +52,9 @@ class DNN:
 
                 #create new relation
                 new_hidden = self.hiddenlayers[-1]
-                new_hidden = tf.matmul(new_hidden, new_w)
-                #new_hidden = tf.add(
-                #    tf.matmul(new_hidden, new_w), self.biases[i - 1])
+                #new_hidden = tf.matmul(new_hidden, new_w) #without biases
+                new_hidden = tf.add( #with biases
+                    tf.matmul(new_hidden, new_w), self.biases[i - 1])
                 new_hidden = self.activation(new_hidden)
 
                 self.hiddenlayers.append(new_hidden)
