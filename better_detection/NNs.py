@@ -79,7 +79,7 @@ class DNN:
         x = np.reshape(x, [1, -1])  #reshapes
         y = np.reshape(y, [1, -1])
 
-        opt = tf.train.AdamOptimizer(
+        opt = tf.train.GradientDescentOptimizer(
             learning_rate=self.lr).minimize(self.cost())
         _, c = sess.run(
             [opt, self.cost()], feed_dict={self.hiddenlayers[0]: x,
@@ -88,16 +88,18 @@ class DNN:
         pass
 
     def cost(self):
+        """
         return tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(
                 logits=[self.hiddenlayers[-1]], labels=[self.y]))
-
+        """
+        return tf.reduce_sum(tf.square(self.hiddenlayers[-1]-self.y))
     def activation(self, layer):
         return tf.nn.sigmoid(layer)
 
 
 if (__name__ == '__main__'):
-    dnn = DNN(layers=[5, 100, 100, 5], lr=0.8)
+    dnn = DNN(layers=[5, 10, 10, 5], lr=0.8)
     init = tf.initialize_all_variables()
 
     i = [0.1, 0.2, 0.3, 0.4, 0.5]
