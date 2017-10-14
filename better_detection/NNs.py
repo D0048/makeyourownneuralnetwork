@@ -24,8 +24,8 @@ def log(msg, urgency=-1):
 class DNN:
     weights = []
     biases = []
-    layers_size = [10, 10]
     hiddenlayers = []
+    layers_size = [10, 10]
     lr = 0.1
     y = tf.placeholder(tf.float32, [None, None])
 
@@ -45,13 +45,14 @@ class DNN:
                 current_layer_size = layers[i]
                 new_w = tf.Variable(
                     tf.random_normal(
-                        [last_layer_size, current_layer_size], seed=seed))
+                        [last_layer_size, current_layer_size], seed=seed),
+                    trainable=True)
                 self.weights.append(new_w)
                 log("Weight added: [{}]".format(new_w))
 
                 #create new relation
                 new_hidden = self.hiddenlayers[-1]
-                new_hidden =tf.matmul(new_hidden, new_w)
+                new_hidden = tf.matmul(new_hidden, new_w)
                 #new_hidden = tf.add(
                 #    tf.matmul(new_hidden, new_w), self.biases[i - 1])
                 new_hidden = self.activation(new_hidden)
@@ -70,29 +71,15 @@ class DNN:
     pass
 
     def query(self, x, sess):
-        """
-        if (x.__len__() != self.layers_size[0]):  #check input size
-            raise Exception("Wrong input shape, expected length: {}".format(
-                self.layers_size[0]))
-            pass
-        """
         x = np.reshape(x, [1, 5])
         return sess.run(
             self.hiddenlayers[-1], feed_dict={self.hiddenlayers[0]: x})
 
     def fit(self, x, y, sess):
-        """
-        if (x.__len__() != self.layers_size[0]  #input check
-                or y.__len__() != self.layers_size[-1]):
-
-            raise Exception("Wrong input shape, expected length: {} \nand: {}".
-                            format(self.layers_size[0], self.layers_size[-1]))
-            pass
-        """
         x = np.reshape(x, [1, -1])  #reshapes
         y = np.reshape(y, [1, -1])
 
-        opt = tf.train.GradientDescentOptimizer(
+        opt = tf.train.AdamOptimizer(
             learning_rate=self.lr).minimize(self.cost())
         _, c = sess.run(
             [opt, self.cost()], feed_dict={self.hiddenlayers[0]: x,
@@ -110,13 +97,13 @@ class DNN:
 
 
 if (__name__ == '__main__'):
-    dnn = DNN(layers=[5, 100, 100, 5], lr=0.1)
+    dnn = DNN(layers=[5, 100, 100, 5], lr=0.8)
     init = tf.initialize_all_variables()
 
     i = [0.1, 0.2, 0.3, 0.4, 0.5]
     i = np.reshape(i, [1, -1])
 
-    o = [0, 0, 0, 0, 1]
+    o = [0, 0, 0, 0, 0.9]
     o = np.reshape(o, [1, -1])
 
     with tf.Session() as sess:
@@ -126,13 +113,13 @@ if (__name__ == '__main__'):
         print(
             sess.run(dnn.cost(), feed_dict={dnn.y: o,
                                             dnn.hiddenlayers[0]: i}))
-
+        #start training
         epoches = 100
         for e in range(epoches):
-            dnn.fit([0.1, 0.2, 0.3, 0.4, 0.5], [0, 0, 0, 0, 1], sess)
+            dnn.fit(i, o, sess)
             pass
 
-        print(dnn.query([0.1, 0.2, 0.3, 0.4, 0.5], sess))
+        print(dnn.query(i, sess))
 
         print(
             sess.run(dnn.cost(), feed_dict={dnn.y: o,
