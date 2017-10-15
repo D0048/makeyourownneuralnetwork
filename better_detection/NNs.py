@@ -53,7 +53,7 @@ class DNN:
                 #create new relation
                 new_hidden = self.hiddenlayers[-1]
                 #new_hidden = tf.matmul(new_hidden, new_w) #without biases
-                new_hidden = tf.add( #with biases
+                new_hidden = tf.add(  #with biases
                     tf.matmul(new_hidden, new_w), self.biases[i - 1])
                 new_hidden = self.activation(new_hidden)
 
@@ -71,7 +71,7 @@ class DNN:
     pass
 
     def query(self, x, sess):
-        x = np.reshape(x, [1, 5])
+        x = np.reshape(x, [1, -1])
         return sess.run(
             self.hiddenlayers[-1], feed_dict={self.hiddenlayers[0]: x})
 
@@ -80,58 +80,69 @@ class DNN:
         y = np.reshape(y, [1, -1])
 
         opt = tf.train.GradientDescentOptimizer(
-            learning_rate=self.lr).minimize(self.cost())
+            learning_rate=self.lr).minimize(self.cost_func())
         _, c = sess.run(
-            [opt, self.cost()], feed_dict={self.hiddenlayers[0]: x,
-                                           self.y: y})
-        log(c)
+            [opt, self.cost_func()],
+            feed_dict={self.hiddenlayers[0]: x,
+                       self.y: y})
+        log("cost: {}".format(c))
         pass
 
-    def cost(self):
+    def batch_fit(self, batch_x, batch_y):
+        pass
+
+    def batch_cost_func(self):
+        pass
+
+    def batch_cost(self, batch_x, batch_y, sess):
+        pass
+
+    def cost_func(self):
+        return tf.reduce_sum(tf.square(self.hiddenlayers[-1] - self.y))
         """
         return tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(
                 logits=[self.hiddenlayers[-1]], labels=[self.y]))
         """
-        return tf.reduce_sum(tf.square(self.hiddenlayers[-1]-self.y))
+
+    def cost(self, x, y, sess):
+        return sess.run(
+            self.cost_func, feed_dict={self.hiddenlayers[0]: x,
+                                       self.y: y})
+
     def activation(self, layer):
         return tf.nn.sigmoid(layer)
 
 
-if (__name__ == '__main__'):
-    dnn = DNN(layers=[5, 10, 10, 5], lr=0.8)
+def next_output():
+    t += 1
+    return [k * t]
+
+
+if (__name__ == '__main__'):  #TODO: Batch
+    dnn = DNN(layers=[1, 10, 10, 1], lr=1)
     init = tf.initialize_all_variables()
 
-    i = [0.1, 0.2, 0.3, 0.4, 0.5]
-    i = np.reshape(i, [1, -1])
-
-    o = [0, 0, 0, 0, 0.9]
-    o = np.reshape(o, [1, -1])
+    i = []
+    o = []
+    k = 3
+    x = -50
 
     with tf.Session() as sess:
         sess.run(init)
 
-        print(dnn.query([0.1, 0.2, 0.3, 0.4, 0.5], sess))
-        print(
-            sess.run(dnn.cost(), feed_dict={dnn.y: o,
-                                            dnn.hiddenlayers[0]: i}))
         #start training
         epoches = 100
         for e in range(epoches):
+            i = [x]
+            o = [x * k]
+            x += 1
+            #i = np.reshape(i, [1, -1])
+            #o = np.reshape(o, [1, -1])
             dnn.fit(i, o, sess)
             pass
 
-        print(dnn.query(i, sess))
-
-        print(
-            sess.run(dnn.cost(), feed_dict={dnn.y: o,
-                                            dnn.hiddenlayers[0]: i}))
-
-        dnn.weights[1] = tf.add(tf.Variable(initial_value=0.2), dnn.weights[1])
-
-        log("changed")
-        print(dnn.query(i, sess))
-        print(
-            sess.run(dnn.cost(), feed_dict={dnn.y: o,
-                                            dnn.hiddenlayers[0]: i}))
+        for i in range(-100, 100):
+            i = np.reshape(i, [1, -1])
+            print(dnn.query([i], sess))
         pass
