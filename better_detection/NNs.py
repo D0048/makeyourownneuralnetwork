@@ -130,17 +130,24 @@ if (__name__ == '__main__'):  #TODO: Batch
 
     with tf.Session() as sess:
         sess.run(init)
-
+        
+        i1=[0.2]
+        i2=[0.3]
+        o1=[0.6]
+        o2=[0.8]
+        print(tf.contrib.layers.fully_connected)
         #start training
         epoches = 100
         for e in range(epoches):
-            i = [x]
-            o = [x * k]
-            x += 1
-            #i = np.reshape(i, [1, -1])
-            #o = np.reshape(o, [1, -1])
-            dnn.fit(i, o, sess)
+            for x in range(-10,10):
+                i = [x]
+                o = [x * k]
+                #x += 1
+                #i = np.reshape(i, [1, -1])
+                #o = np.reshape(o, [1, -1])
+                dnn.fit(i, o, sess)
             pass
+        pass
 
         for i in range(-100, 100):
             i = np.reshape(i, [1, -1])
