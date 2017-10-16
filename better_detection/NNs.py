@@ -28,7 +28,8 @@ class DNN:
     layers_size = [10, 10]
     lr = 0.1
     y = tf.placeholder(tf.float32, [None, None])
-
+    opt=tf.train.GradientDescentOptimizer(
+            learning_rate=0.1)
     def __init__(self, layers=[3, 2, 4, 5], lr=0.1):
         #layers[input_size,l1_size,l2_size,...,ln_size,output_size]
 
@@ -37,6 +38,10 @@ class DNN:
 
         last_layer_size = layers[0]
         self.hiddenlayers.append(tf.placeholder(tf.float32, [1, layers[0]]))
+        self.opt=tf.train.GradientDescentOptimizer(
+            learning_rate=self.lr)
+        #self.opt_min=self.opt.minimize(self.cost_func())
+
 
         for i in range(
                 layers.__len__()):  #init all weight[input->hidden->output]
@@ -79,13 +84,16 @@ class DNN:
         x = np.reshape(x, [1, -1])  #reshapes
         y = np.reshape(y, [1, -1])
 
-        opt = tf.train.GradientDescentOptimizer(
-            learning_rate=self.lr).minimize(self.cost_func())
-        _, c = sess.run(
-            [opt, self.cost_func()],
+        c_before = sess.run(
+            self.cost_func(),
             feed_dict={self.hiddenlayers[0]: x,
                        self.y: y})
-        log("cost: {}".format(c))
+
+        _, c = sess.run(
+            [self.opt.minimize(self.cost_func()), self.cost_func()],
+            feed_dict={self.hiddenlayers[0]: x,
+                       self.y: y})
+        log("cost: {}, changed {}".format(c,c_before))
         pass
 
     def batch_fit(self, batch_x, batch_y):
@@ -130,26 +138,37 @@ if (__name__ == '__main__'):  #TODO: Batch
 
     with tf.Session() as sess:
         sess.run(init)
-        
         i1=[0.2]
         i2=[0.3]
         o1=[0.6]
         o2=[0.8]
         print(tf.contrib.layers.fully_connected)
+
+        #performance before training
+        for i in range(-5, 5):
+            i = np.reshape(i, [1, -1])
+            print(dnn.query([i], sess))
+        pass
+
         #start training
-        epoches = 100
+        import datetime
+        epoches = 10
         for e in range(epoches):
             for x in range(-10,10):
+                starttime = datetime.datetime.now()
                 i = [x]
                 o = [x * k]
-                #x += 1
                 #i = np.reshape(i, [1, -1])
                 #o = np.reshape(o, [1, -1])
                 dnn.fit(i, o, sess)
+                endtime= datetime.datetime.now()
+                log("fitting: {}, {}, Time elapsed: {}".format(i,o,endtime-starttime))
+                #tf.get_default_graph().finalize()
             pass
         pass
 
-        for i in range(-100, 100):
+        #performance after training
+        for i in range(-5, 5):
             i = np.reshape(i, [1, -1])
             print(dnn.query([i], sess))
         pass
