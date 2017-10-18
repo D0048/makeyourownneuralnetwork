@@ -27,105 +27,123 @@ class DNN:
     layers = []
     layers_size = [1]
     lr = 0.1
+    out_layer = tf.Variable(initial_value=0)
+    activation = tf.nn.sigmoid
+    optmizer = ()
+    opt_min = ()
+    y_label = tf.placeholder(tf.float32)
+    loss = 1
+    batch_y_labels = tf.placeholder(tf.float32)
+    batch_x = tf.placeholder(tf.float32)
 
     def __init__(self, layers_size=[1, 2], lr=0.1):
         self.layers_size, self.lr = layers_size, lr
+        self.activation = tf.nn.sigmoid
 
-        last_layer_size = layers_size[1]
+        last_layer_size = layers_size[1]  #layer creation
         self.layers.append(
             tf.placeholder(tf.float32, shape=[1, layers_size[0]]))
 
         i = 0
         for l in layers_size:
             if (i != 0):
-                self.layers.append(
-                    self.new_fc_layer(self.layers[-1], last_layer_size, l))
+                self.layers.append(self.new_fc_layer(self.layers[-1], l))
             i += 1
             last_layer_size = l
+            pass
+        self.out_layer = self.layers[-1]
+
+        #single loss init
+        self.loss = tf.losses.absolute_difference(
+            labels=self.y_label, predictions=self.out_layer)
+        #optimizer init
+        self.optmizer = tf.train.GradientDescentOptimizer(
+            learning_rate=self.lr)
+        self.opt_min = self.optmizer.minimize(self.loss)
         pass
 
     def query(self, x, sess):
+        return sess.run(
+            self.out_layer, feed_dict={self.layers[0]: np.reshape(x, [-1, 1])})
         pass
 
     def fit(self, x, y, sess):
+        x = np.reshape(x, [-1, 1])
+        y = np.reshape(y, [-1, 1])
+        #y=sess.run(self.out_layer,feed_dict={self.layers[0]})
+        _, loss = sess.run(
+            [self.opt_min, self.loss],
+            feed_dict={self.layers[0]: x,
+                       self.y_label: y})
+        log("loss: {}".format(loss))
         pass
 
     def batch_fit(self, batch_x, batch_y):
         pass
 
-    def cost_func(self):
+    def cost(self, x, y_label, sess):
+        log("loss: {}".format(
+            sess.run(
+                self.loss,
+                feed_dict={self.layers[0]: x,
+                           self.y_label: y_label})))
         pass
 
-    def cost(self, x, y, sess):
+    def batch_cost(self):
+        with tf.Session as sess:
+            bc = 0
+            sess.run(tf.initialize_all_variables())
+
+            i = 0
+            for x in self.batch_x:
+                bc += sess.run(
+                    self.cost,
+                    feed_dict={
+                        self.layers[0]: x,
+                        self.y_label: self.batch_y_labels[i]
+                    })
+                i += 1
+                pass
+            return bc
         pass
 
-    def batch_cost_func(self):
-        pass
-
-    def batch_cost(self, batch_x, batch_y, sess):
-        pass
-
-    def activation(self, layer):
-        pass
-
-    def new_fc_layer(self, in_layer, in_num, out_num, use_relu=False):  #m=out_num
-        log("New layer created: {}=>{}".format(in_num, out_num))
-        weights = tf.Variable(
-            tf.truncated_normal([in_num, out_num], stddev=0.05))
-        biases = tf.Variable(tf.truncated_normal(shape=[out_num], stddev=0.05))
-
-        layer = tf.add(tf.matmul(in_layer, weights), biases)
-        if use_relu:
-            layer = tf.nn.relu(layer)
-        else:
-            layer = tf.nn.sigmoid(layer)
+    def new_fc_layer(
+            self,
+            in_layer,
+            out_num, ):  #m=out_num
+        log("New layer created: =>{}".format(out_num))
+        layer = tf.contrib.layers.fully_connected(
+            in_layer, out_num, activation_fn=self.activation)
         return layer
 
 
-if (__name__ == '__main__'):  #TODO: Batch
-    dnn = DNN(layers_size=[1, 10, 10, 1], lr=1)
-    SystemExit()
+if (__name__ == '__main__'):
+    dnn = DNN(layers_size=[1, 10, 10, 2], lr=0.1)
     init = tf.initialize_all_variables()
-
-    i = []
-    o = []
-    k = 3
-    x = -50
 
     with tf.Session() as sess:
         sess.run(init)
-        i1 = [0.2]
-        i2 = [0.3]
-        o1 = [0.6]
-        o2 = [0.8]
-        print(tf.contrib.layers.fully_connected)
 
+        i = [0.1]
+        o = [0.2, 0.2]
         #performance before training
-        for i in range(-5, 5):
-            i = np.reshape(i, [1, -1])
-            print(dnn.query([i], sess))
-        pass
+        i = np.reshape(i, [1, -1])
+        print(dnn.query([i], sess))
 
         #start training
         import datetime
         epoches = 10
         for e in range(epoches):
-            for x in range(-10, 10):
-                starttime = datetime.datetime.now()
-                i = [x]
-                o = [x * k]
-                #i = np.reshape(i, [1, -1])
-                #o = np.reshape(o, [1, -1])
-                dnn.fit(i, o, sess)
-                endtime = datetime.datetime.now()
-                log("fitting: {}, {}, Time elapsed: {}".format(
-                    i, o, endtime - starttime))
-                #tf.get_default_graph().finalize()
+            starttime = datetime.datetime.now()
+            dnn.fit(i, o, sess)
+            endtime = datetime.datetime.now()
+            log("fitting: {}, {}, Time elapsed: {}".format(
+                i, o, endtime - starttime))
+            #tf.get_default_graph().finalize()
             pass
         pass
 
         #performance after training
-        for i in range(-5, 5):
-            i = np.reshape(i, [1, -1])
-            print(dnn.query([i], sess))
+        i = np.reshape(i, [1, -1])
+        print(dnn.query([i], sess))
         pass
