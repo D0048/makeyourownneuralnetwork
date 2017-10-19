@@ -49,31 +49,48 @@ def cnn_model_fn(features, labels, mode):
     # First max pooling layer with a 2x2 filter and stride of 2
     # Input Tensor Shape: [batch_size, 28, 28, 32]
     # Output Tensor Shape: [batch_size, 14, 14, 32]
-    pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[2, 2], strides=2,name="pool1")
+    pool1 = tf.layers.max_pooling2d(
+        inputs=conv1, pool_size=[2, 2], strides=2, name="pool1")
 
     # Convolutional Layer #2
     # Input Tensor Shape: [batch_size, 14, 14, 32]
-    # Output Tensor Shape: [batch_size, 28, 28, 32*32]
+    # Output Tensor Shape: [batch_size, 14, 14, 32]
     conv2 = tf.layers.conv2d(
         inputs=pool1,
         filters=32,
         kernel_size=[3, 3],
         padding="same",
         #activation=tf.nn.sigmoid)
-        activation=tf.nn.relu
-        ,name="conv2")
+        activation=tf.nn.relu,
+        name="conv2")
 
     #Flattened Layer #1
-    #Input: [batch_size,28,28,32*32]
-    #Output: [batch_size,28*28*32*32]
-    flatteded_layer = tf.reshape(conv2, [-1, 14 * 14 * 32])
+    #Input: [batch_size,14,14,32]
+    #Output: [batch_size,14*14*32]
+    flatteded_layer1 = tf.reshape(conv2, [-1, 14*14*32,1])
+
+    #Convolutional Layer1d #3
+    #Input: [batch_size,14*14*32]
+    #Output: [batch_size,14*14*32,16]
+    conv3 = tf.layers.conv1d(
+        inputs=flatteded_layer1,
+        filters=16,
+        kernel_size=3,
+        padding="same",
+        activation=tf.nn.relu,
+        name="conv3")
+
+    #Flattened Layer #2
+    #Input: [batch_size,14*14*32,16]
+    #Output: [batch_size,14*14*32*16]
+    flatteded_layer2 = tf.reshape(conv3, [-1, 14 * 14 * 32*16])
 
     # Dense Layer
     # Densely connected layer with 1024 neurons
     # Input Tensor Shape: [batch_size, 7 * 7 * 64]
     # Output Tensor Shape: [batch_size, 1024]
     dense1 = tf.layers.dense(
-        inputs=flatteded_layer,
+        inputs=flatteded_layer2,
         units=1024,
         activation=tf.nn.relu,
         name="dense1")
@@ -150,15 +167,15 @@ def main(unused_argv):
         num_epochs=None,
         shuffle=True)
 
-    for _ in range(0,100):
+    for _ in range(0, 100):
         mnist_classifier.train(
-        input_fn=train_input_fn, steps=200, hooks=[logging_hook])
+            input_fn=train_input_fn, steps=2000, hooks=[logging_hook])
 
     # Evaluate the model and print results
-        eval_input_fn = tf.estimator.inputs.numpy_input_fn(
+    eval_input_fn = tf.estimator.inputs.numpy_input_fn(
         x={"x": eval_data}, y=eval_labels, num_epochs=1, shuffle=False)
-        eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
-        print(eval_results)
+    eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
+    print(eval_results)
 
 
 if __name__ == "__main__":
