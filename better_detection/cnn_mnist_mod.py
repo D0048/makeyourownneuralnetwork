@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+import tflearn
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -53,7 +54,7 @@ def cnn_model_fn(features, labels, mode):
     conv2 = tf.layers.conv2d(
         inputs=conv1,
         filters=128,
-        kernel_size=[1, 1],
+        kernel_size=[5, 5],
         padding="same",
         #activation=tf.nn.sigmoid)
         activation=tf.nn.relu,
@@ -65,7 +66,7 @@ def cnn_model_fn(features, labels, mode):
     conv3 = tf.layers.conv2d(
         inputs=conv2,
         filters=64,
-        kernel_size=[1, 1],
+        kernel_size=[5, 5],
         padding="same",
         #activation=tf.nn.sigmoid)
         activation=tf.nn.relu,
@@ -77,15 +78,18 @@ def cnn_model_fn(features, labels, mode):
     # Output Tensor Shape: [batch_size, 14, 14, 64]
     pool1 = tf.layers.max_pooling2d(
         inputs=conv3, pool_size=[2, 2], strides=2, name="pool1")
-    print("shape at cv3: {}\n".format(conv2))
+
+    # Add dropout operation; 0.6 probability that element will be kept
+    dropout1 = tf.layers.dropout(
+        inputs=pool1, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
 
     #Convolutional Layer#4
     #Input: [batch_size,14,14,64]
     #Output: [batch_size,14,14,16]
     conv4 = tf.layers.conv2d(
-        inputs=pool1,
+        inputs=dropout1,
         filters=16,
-        kernel_size=[1, 1],
+        kernel_size=[5, 5],
         padding="same",
         activation=tf.nn.relu,
         name="conv4")
@@ -94,22 +98,23 @@ def cnn_model_fn(features, labels, mode):
     #Output: [batch_size,14,14,16]
     conv5 = tf.layers.conv2d(
         inputs=conv4,
-        filters=16,
-        kernel_size=[1, 1],
+        filters=20,
+        kernel_size=[5, 5],
         padding="same",
         activation=tf.nn.relu,
         name="conv5")
     #Convolutional Layer#6
     #Input: [batch_size,14,14,16]
-    #Output: [batch_size,14,14,16]
+    #Output: [batch_size,14,14,10]
     conv6 = tf.layers.conv2d(
         inputs=conv5,
         filters=16,
-        kernel_size=[1, 1],
+        kernel_size=[5, 5],
         padding="same",
         activation=tf.nn.relu,
         name="conv6")
 
+    #Old method
     #Flattened Layer #1
     #Input: [batch_size,14,14,16]
     #Output: [batch_size,14*14*16]
@@ -130,13 +135,27 @@ def cnn_model_fn(features, labels, mode):
         inputs=dense2, units=1024, activation=tf.nn.relu, name="dense3")
 
     # Add dropout operation; 0.6 probability that element will be kept
-    dropout = tf.layers.dropout(
+    dropout2 = tf.layers.dropout(
         inputs=dense3, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
+    """
+    #Global average pooling
+
+    #global pooling #1
+    #input: [bs,14,14,16]
+    #output: [bs, 1,1,10]
+    global_max_pool1 = tf.layers.max_pooling2d(
+        inputs=conv6, pool_size=[14, 14], strides=2, name="global_max_pool1")
+
+    #Flattened Layer #1
+    #Input: [batch_size,1,1,10]
+    #Output: [batch_size,10]
+    flatteded_layer2 = tf.reshape(global_max_pool1, [-1, 10])
+    """
 
     # Logits layer
     # Input Tensor Shape: [batch_size, 1024]
     # Output Tensor Shape: [batch_size, 10]
-    logits = tf.layers.dense(inputs=dropout, units=10)
+    logits = tf.layers.dense(inputs=dropout2, units=10)
     print("logits: {}".format(logits))
 
     predictions = {
@@ -156,7 +175,8 @@ def cnn_model_fn(features, labels, mode):
 
     # Configure the Training Op (for TRAIN mode)
     if mode == tf.estimator.ModeKeys.TRAIN:
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
+        optimizer = tf.train.AdagradOptimizer(learning_rate=0.001)
+        #optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
         train_op = optimizer.minimize(
             loss=loss, global_step=tf.train.get_global_step())
         return tf.estimator.EstimatorSpec(
