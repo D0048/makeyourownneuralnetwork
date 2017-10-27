@@ -47,11 +47,12 @@ def main(unused_argv):
     network = max_pool_2d(network, 2)
 
     network = fully_connected(network, 512, activation='relu')
-    print(network)
-    import sys
-    sys.exit(0)
-    tf.truncated_normal([-1, 512])  #[batch_size, weight_per_self]
-    network = tf.matmul()
+
+    #begin mod
+    #import sys
+    #sys.exit(0)
+    #end mod
+
     network = dropout(network, 0.5)
     network = fully_connected(network, 10, activation='relu')
     network = regression(
@@ -72,6 +73,13 @@ def main(unused_argv):
         batch_size=96,
         run_id='mnist')
     pass
+
+
+def my_objective(y_pred, y_true):
+    with tf.name_scope(None):
+        return tf.reduce_mean(
+            tf.nn.softmax_cross_entropy_with_logits(
+                logits=y_pred, labels=y_true))
 
 
 if __name__ == "__main__":
