@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Convolutional Neural Network Estimator for MNIST, built with tf.layers."""
-
+#TODO: change structure to tfl, gan
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
