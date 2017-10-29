@@ -17,12 +17,14 @@ from tflearn.datasets import mnist
 #aug rot25|32,5|128,5|64,5|mxp2|drpot0.5|16,4|20,5|16,5|fc1024|fc1024|fc1024|fc10|->adam0.001 =>99.43 0.027
 #aug !|32,5|128,5|64,5|mxp2|drpot0.5|16,4|20,5|16,5|fc1024|fc1024|fc1024|fc10|->adam0.001 =>99.1 0.020
 
-global x_origin, y_origin, rec_model
-
 
 def main(unused_argv):
+    global rec_model, old_graph, new_graph
     rec_model = train_rec()
-    tf.reset_default_graph()
+
+    #old_graph = tf.get_default_graph()
+    #new_graph = tf.Graph()
+    #new_graph.as_default()
 
     X, Y, X_test, Y_test = mnist.load_data(one_hot=True)
 
@@ -47,48 +49,41 @@ def main(unused_argv):
     new_network = fully_connected(new_network, 128, activation='relu')
     new_network = fully_connected(new_network, 28 * 28, activation='relu')
     new_network = regression(
-        new_network,
-        optimizer='adam',
-        loss='categorical_crossentropy',
-        learning_rate=0.001)
+        new_network, optimizer='adam', loss=new_cost, learning_rate=0.001)
     new_model = tflearn.DNN(new_network, tensorboard_verbose=0)
 
-    print(rec_model.predict_label(x_origin.reshape(-1, 28, 28, 1)))
+    print(new_model.predict_label(x_origin.reshape(-1, 28, 28, 1)))
     new_model.fit(
         x_origin,
         y_dummy,
         n_epoch=5,
-        shuffle=True,
+        shuffle=False,
         validation_set=(x_origin, y_dummy),
         show_metric=True,
-        batch_size=96,
+        batch_size=1,
         run_id='mnist_counter')
 
     pass
 
 
 def new_cost(y_pred, y_true):
-    #x_origin: 28*28mod
+    #x_origin: 28*28
     #y_pred: 28*28mod
     #y_true = y_origin: 1x10
     #y_disturbed: evla(y_pred)
-    global x_origin, y_origin, rec_model  #y_true is useless
+    global x_origin, y_origin, rec_model, rec_input, rec_network, new_graph  #y_true is useless
 
     with tf.name_scope(None):
-        cost_from_similarity = tf.reduce_sum(  #minimize (Y_pred-x_origin)^2
-            tf.pow(tf.subtract(y_pred, x_origin)), 2)
+        cost_from_similarity = tf.reduce_sum(
+            (y_pred - x_origin)**2)  #minimize (Y_pred-x_origin)^2
 
-        y_disturbed = rec_model.predict(y_pred)
+        y_disturbed = rec_network  #↓  ts no len()
+
         print(y_disturbed)
+        cost_from_distrubance = (
+            tf.reduce_sum(y_disturbed, y_origin)**2) * tf.Constant(-1)
 
-        cost_from_distrubance = -tf.reduce_mean(  #maximize eval(Y_predict)-y_origin
-            tf.nn.softmax_cross_entropy_with_logits(
-                logits=y_disturbed, labels=y_true))
-
-        cost_from_distrubance = tf.maximum(0, cost_from_distrubance)
-
-        return tf.reduce_sum(
-            tf.add(cost_from_similarity, cost_from_distrubance))
+        return tf.reduce_sum(cost_from_similarity + cost_from_distrubance)
     pass
 
 
@@ -111,11 +106,12 @@ def train_rec():
     img_aug.add_random_rotation(max_angle=25.)
 
     # Convolutional network building
-    network = input_data(
+    inputs = input_data(
         shape=[None, 28, 28, 1],
         data_preprocessing=img_prep,
-        data_augmentation=img_aug)
-    network = conv_2d(network, 32, 3, activation='relu')
+        data_augmentation=img_aug,
+        name="inputs")
+    network = conv_2d(inputs, 32, 3, activation='relu')
     network = max_pool_2d(network, 2)
     network = conv_2d(network, 64, 3, activation='relu')
     network = conv_2d(network, 64, 3, activation='relu')
@@ -133,6 +129,9 @@ def train_rec():
 
     # Train using classifier
     model = tflearn.DNN(network, tensorboard_verbose=0)
+    global rec_input, rec_network
+    rec_input, rec_network = inputs, network
+    """
     model.fit(
         X,
         Y,
@@ -140,8 +139,9 @@ def train_rec():
         shuffle=True,
         validation_set=(X_test, Y_test),
         show_metric=True,
-        batch_size=96,
+        batch_size=128,
         run_id='mnist')
+    """
     return model
 
 
