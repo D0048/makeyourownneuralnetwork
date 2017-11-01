@@ -8,6 +8,7 @@ from tflearn.layers.conv import conv_2d, max_pool_2d
 from tflearn.layers.estimator import regression
 from tflearn.data_preprocessing import ImagePreprocessing
 from tflearn.data_augmentation import ImageAugmentation
+import matplotlib.pyplot as plt
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -20,7 +21,8 @@ from tflearn.datasets import mnist
 
 def main(unused_argv):
     #global rec_model, old_graph, new_graph
-    #rec_model = train_rec()
+    rec_model = train_rec()
+    exit()
 
     X, Y, X_test, Y_test = mnist.load_data(one_hot=True)
 
@@ -50,6 +52,7 @@ def main(unused_argv):
     confuser_out = regression(
         confuser_fc3, optimizer='adam', loss=new_cost, learning_rate=0.001)
 
+    # TODO: GAN
     new_model = tflearn.DNN(new_network, tensorboard_verbose=0)
     new_model.fit(
         X,
@@ -112,20 +115,18 @@ def train_rec():
         learning_rate=0.001)
 
     # Train using classifier
-    model = tflearn.DNN(network, tensorboard_verbose=0)
+    model = tflearn.DNN(network, tensorboard_verbose=3)
     global rec_input, rec_network
     rec_input, rec_network = inputs, network
-    """
     model.fit(
         X,
         Y,
-        n_epoch=1,
+        n_epoch=20,
         shuffle=True,
         validation_set=(X_test, Y_test),
         show_metric=True,
         batch_size=128,
         run_id='mnist')
-    """
     return model
 
 
