@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 import tflearn
+from PIL import Image
+import sys
 
 
 class MonitorCallback(tflearn.callbacks.Callback):
@@ -13,26 +15,34 @@ class MonitorCallback(tflearn.callbacks.Callback):
         pass
 
     def on_epoch_end(self, training_state):
-        global gan
-        z_dim = 784
-        f, a = plt.subplots(2, 10, figsize=(10, 4))
+        global gan, X, Y
         for i in range(10):
-            for j in range(2):
-                # Noise input.
-                #z = np.random.uniform(-1., 1., size=[1, z_dim])
-                # Generate image from noise. Extend to 3 channels for matplot figure.
-                global z
-                temp = [[ii, ii, ii] for ii in list(gan.predict(z)[0])]
-                a[j][i].imshow(np.reshape(temp, (28, 28, 3)))
-                pass
-            pass
-        if (self.count % 10 == 0):
-            f.show()
-            plt.draw()
-            plt.waitforbuttonpress()
+            chan = gan.predict(X[i].reshape([1, 1, 784]))
+            chan /= 10
+            chan = chan.reshape([28, 28])
+            print(chan)
+            imshow(chan)
+            imshow(X[1].reshape([28,28]))
+
+        if (self.count % 8 == 0):
             pass
         self.count += 1
         pass
+
+
+def imshow(img):
+    avg = np.average(img)
+    for i in img:
+        for j in i:
+            if (j >= avg):
+                sys.stdout.write('█')
+                pass
+            else:
+                sys.stdout.write(' ')
+            pass
+        print(" ")
+        pass
+    pass
 
 
 # Generator
@@ -54,14 +64,14 @@ def discriminator(x, reuse=False):
 
 # Data loading and preprocessing
 import tflearn.datasets.mnist as mnist
+global X, Y
 X, Y, testX, testY = mnist.load_data()
 image_dim = 784  # 28*28 pixels
-z_dim = 200  # Noise data points
 total_samples = len(X)
 
-Y = tf.one_hot(Y, 10,dtype=tf.float32)
+Y = tf.one_hot(Y, 10, dtype=tf.float32)
 with tf.Session() as sess:
-    Y=sess.run(Y)
+    Y = sess.run(Y)
     pass
 
 # Build Networks
@@ -75,8 +85,8 @@ disc_real = discriminator(disc_input)
 disc_fake = discriminator(gen_sample, reuse=True)
 
 # Define Lossdisc_input
-disc_loss = tf.losses.sigmoid_cross_entropy(disc_real, Y_feed)
-gen_loss = tf.losses.sigmoid_cross_entropy(disc_fake, Y_feed)
+disc_loss = tf.losses.sigmoid_cross_entropy(disc_real, Y_feed)**2
+gen_loss = tf.losses.sigmoid_cross_entropy(disc_fake, Y_feed)**2
 """
 disc_loss = -tf.reduce_mean(tf.log(disc_real) + tf.log(1. - disc_fake))
 gen_loss = -tf.reduce_mean(
@@ -125,5 +135,5 @@ gan.fit(
         Y_feed: Y
     },
     Y_targets=None,
-    n_epoch=50,
+    n_epoch=10,
     callbacks=[MonitorCallback()])
