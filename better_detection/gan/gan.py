@@ -20,17 +20,19 @@ class MonitorCallback(tflearn.callbacks.Callback):
             chan = gan.predict(X[i].reshape([1, 1, 784]))
             chan /= 10
             chan = chan.reshape([28, 28])
-            print(chan)
-            imshow(chan)
-            imshow(X[1].reshape([28,28]))
+            #print(chan)
 
-        if (self.count % 8 == 0):
-            pass
+            if (self.count % 3== 0):
+                imshow(chan)
+                print("Image displayed")
+                #imshow(X[1].reshape([28, 28])) #A 3, for testing purpose only
+                pass
+            cli_imshow(chan)
         self.count += 1
         pass
 
 
-def imshow(img):
+def cli_imshow(img):
     avg = np.average(img)
     for i in img:
         for j in i:
@@ -42,6 +44,13 @@ def imshow(img):
             pass
         print(" ")
         pass
+    pass
+
+
+def imshow(img):
+    #f=plt.figure()
+    #plt.show(block = False)
+    plt.imshow(img, interpolation='nearest')
     pass
 
 
@@ -69,7 +78,7 @@ X, Y, testX, testY = mnist.load_data()
 image_dim = 784  # 28*28 pixels
 total_samples = len(X)
 
-Y = tf.one_hot(Y, 10, dtype=tf.float32)
+Y = tf.one_hot(Y, 10, dtype=tf.float32)  #Making Y onehot
 with tf.Session() as sess:
     Y = sess.run(Y)
     pass
@@ -85,8 +94,10 @@ disc_real = discriminator(disc_input)
 disc_fake = discriminator(gen_sample, reuse=True)
 
 # Define Lossdisc_input
-disc_loss = tf.losses.sigmoid_cross_entropy(disc_real, Y_feed)**2
-gen_loss = tf.losses.sigmoid_cross_entropy(disc_fake, Y_feed)**2
+disc_loss = tf.losses.sigmoid_cross_entropy(disc_real, Y_feed)
+gen_loss = (
+    -tf.losses.sigmoid_cross_entropy(disc_fake, Y_feed)) + tf.reduce_sum(
+        (disc_input - gen_sample)**2)
 """
 disc_loss = -tf.reduce_mean(tf.log(disc_real) + tf.log(1. - disc_fake))
 gen_loss = -tf.reduce_mean(
