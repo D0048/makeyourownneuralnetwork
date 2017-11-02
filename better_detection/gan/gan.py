@@ -14,13 +14,15 @@ class MonitorCallback(tflearn.callbacks.Callback):
 
     def on_epoch_end(self, training_state):
         global gan
+        z_dim = 784
         f, a = plt.subplots(2, 10, figsize=(10, 4))
         for i in range(10):
             for j in range(2):
                 # Noise input.
-                z = np.random.uniform(-1., 1., size=[1, z_dim])
+                #z = np.random.uniform(-1., 1., size=[1, z_dim])
                 # Generate image from noise. Extend to 3 channels for matplot figure.
-                temp = [[ii, ii, ii] for ii in list(gan.predict([z])[0])]
+                global z
+                temp = [[ii, ii, ii] for ii in list(gan.predict(z)[0])]
                 a[j][i].imshow(np.reshape(temp, (28, 28, 3)))
                 pass
             pass
@@ -59,6 +61,8 @@ def discriminator(x, reuse=False):
 
 
 # Build Networks
+global z
+z = X[0].reshape([-1,784])
 gen_input = tf.reshape(tf.constant(X[0]), [1, -1])
 #gen_input = tflearn.input_data(shape=[None, z_dim], name='input_noise')
 disc_input = tflearn.input_data(shape=[None, 784], name='disc_input')
@@ -69,8 +73,8 @@ disc_fake = discriminator(gen_sample, reuse=True)
 
 # Define Loss
 disc_loss = -tf.reduce_mean(tf.log(disc_real) + tf.log(1. - disc_fake))
-gen_loss = -tf.reduce_mean(tf.log(disc_fake)) + tf.reduce_sum(
-    gen_input - generator(gen_input, reuse=True)**2)
+gen_loss = -tf.reduce_mean(tf.log(disc_fake))# + tf.reduce_sum(
+#    gen_input - generator(gen_input, reuse=True)**2)
 
 # Build Training Ops for both Generator and Discriminator.
 # Each network optimization should only update its own variable, thus we need
@@ -102,11 +106,13 @@ gan = tflearn.DNN(gen_model)
 
 # Training
 # Generate noise to feed to the generator
+z_dim = 784
 z = np.random.uniform(-1., 1., size=[total_samples, z_dim])
 # Start training, feed both noise and real images.
 gan.fit(
-    X_inputs={#gen_input: z,
-              disc_input: X},
+    X_inputs={  #gen_input: z,
+        disc_input: X
+    },
     Y_targets=None,
     n_epoch=50,
     show_metric=True,
