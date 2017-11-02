@@ -26,7 +26,7 @@ class MonitorCallback(tflearn.callbacks.Callback):
                 a[j][i].imshow(np.reshape(temp, (28, 28, 3)))
                 pass
             pass
-        if (self.count % 8 == 0):
+        if (self.count % 10 == 0):
             f.show()
             plt.draw()
             plt.waitforbuttonpress()
@@ -62,8 +62,9 @@ def discriminator(x, reuse=False):
 
 # Build Networks
 global z
-z = X[0].reshape([-1,784])
-gen_input = tf.reshape(tf.constant(X[0]), [1, -1])
+origin = X[1]
+z = origin.reshape([-1, 784])
+gen_input = tf.reshape(tf.constant(origin), [1, -1])
 #gen_input = tflearn.input_data(shape=[None, z_dim], name='input_noise')
 disc_input = tflearn.input_data(shape=[None, 784], name='disc_input')
 
@@ -73,8 +74,9 @@ disc_fake = discriminator(gen_sample, reuse=True)
 
 # Define Loss
 disc_loss = -tf.reduce_mean(tf.log(disc_real) + tf.log(1. - disc_fake))
-gen_loss = -tf.reduce_mean(tf.log(disc_fake))# + tf.reduce_sum(
-#    gen_input - generator(gen_input, reuse=True)**2)
+gen_loss = -tf.reduce_mean(
+    tf.log(disc_fake)) + tf.constant(0.5) * tf.reduce_sum(
+        (gen_input - generator(gen_input, reuse=True))**2)
 
 # Build Training Ops for both Generator and Discriminator.
 # Each network optimization should only update its own variable, thus we need
