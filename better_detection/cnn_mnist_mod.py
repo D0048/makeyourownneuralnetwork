@@ -26,13 +26,8 @@ import matplotlib.pyplot as plt
 tf.logging.set_verbosity(tf.logging.INFO)
 
 
-def cnn_model_fn(features, labels, mode):
-    """Model function for CNN."""
-    # Input Layer
-    # Reshape X to 4-D tensor: [batch_size, width, height, channels]
-    # MNIST images are 28x28 pixels, and have one color channel
-    input_layer = tf.reshape(features["x"], [-1, 28, 28, 1])
-
+def dummy():
+    """# Templates
     # Input Tensor Shape: [batch_size, 28, 28, 1]
     # Output Tensor Shape: [batch_size, 28, 28, 32]
     conv1 = tf.layers.conv2d(
@@ -43,20 +38,13 @@ def cnn_model_fn(features, labels, mode):
         #activation=tf.nn.sigmoid)
         activation=tf.nn.relu,
         name="conv1")
-
     # Input Tensor Shape: [batch_size, 28, 28, 32]
     # Output Tensor Shape: [batch_size, 14, 14, 32]
     pool1 = tf.layers.max_pooling2d(
         inputs=conv1, pool_size=[2, 2], strides=2, name="pool1")
-
     # Add dropout operation; 0.6 probability that element will be kept
     dropout1 = tf.layers.dropout(
         inputs=pool1, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
-
-    #Input: [batch_size,14,14,32]
-    #Output: [batch_size,14*14*32]
-    flatteded_layer1 = tf.reshape(dropout1, [-1, 14 * 14 * 32])
-
     # Input Tensor Shape: [batch_size, 14*14*64*16]
     # Output Tensor Shape: [batch_size, 64]
     dense1 = tf.layers.dense(
@@ -64,20 +52,44 @@ def cnn_model_fn(features, labels, mode):
         units=128,
         activation=tf.nn.relu,
         name="dense1")
-    dense2 = tf.layers.dense(
-        inputs=dense1, units=64, activation=tf.nn.relu, name="dense2")
+    """
+    pass
 
-    dropout2 = tf.layers.dropout(
-        inputs=dense2, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
+
+def cnn_model_fn(features, labels, mode):
+    """Model function for CNN."""
+    # Input Layer
+    # Reshape X to 4-D tensor: [batch_size, width, height, channels]
+    # MNIST images are 28x28 pixels, and have one color channel
+    input_layer = tf.reshape(features["x"], [-1, 28, 28, 1])
+    input_layer = tf.reshape(features["x"], [-1, 28 * 28, 1])
+
+    # [bs, 28*28,1]
+    # [bs, 256,1]
+    d_w1 = tf.transpose(tf.truncated_normal([28 * 28, 256]))
+    d_b1 = tf.truncated_normal([28 * 28, 1])
+    d_fc1 = tf.map_fn(lambda x: tf.add(tf.matmul(d_w1, x), d_b1), input_layer)
+
+    # [bs, 256,1]
+    # [bs, 256,1]
+    d_w2 = tf.transpose(tf.truncated_normal([256, 256]))
+    d_b2 = tf.truncated_normal([28 * 28, 1])
+    d_fc2 = tf.map_fn(lambda x: tf.add(tf.matmul(d_w1, x), d_b1), d_fc1)
+
+    # [bs, 256,1]
+    # Fully Connected 28*28 => 256
+    # [bs, 256]
+    d_w2 = tf.transpose(tf.truncated_normal([256, 2]))
+    d_b2 = tf.truncated_normal([256, 1])
+    g_logits = tf.map_fn(lambda x: tf.add(tf.matmul(d_w1, x), d_b1), d_fc1)
 
     # Input Tensor Shape: [batch_size, 64]
     # Output Tensor Shape: [batch_size, 10]
-    logits = tf.layers.dense(inputs=dropout2, units=10)
-    print("logits: {}".format(logits))
+    #logits = tf.layers.dense(inputs=dropout2, units=10)
 
     predictions = {
         # Generate predictions (for PREDICT and EVAL mode)
-        "classes": tf.argmax(input=logits, axis=1),
+        "classes": tf.argmax(input=g_logits, axis=1),
         # Add `softmax_tensor` to the graph. It is used for PREDICT and by the
         # `logging_hook`.
         "probabilities": tf.nn.softmax(logits, name="softmax_tensor")
