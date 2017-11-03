@@ -25,7 +25,7 @@ class MonitorCallback(tflearn.callbacks.Callback):
             cli_imshow(chan)
             imgs.append(chan)
 
-        if (self.count % 3 == 0):
+        if (self.count % 30 == 0):
             imshow(imgs)
             print("Image displayed")
             pass
@@ -51,11 +51,13 @@ def cli_imshow(img):
 def imshow(img):
     #f=plt.figure()
     #plt.show(block = False)
+    global X
     f, a = plt.subplots(2, 10, figsize=(10, 4))
     for i in range(10):
-        for j in range(2):
-            a[j][i].imshow(img[i], interpolation='nearest')
-            pass
+        j = 0
+        a[j][i].imshow(img[i], interpolation='nearest')
+        j = 1
+        a[j][i].imshow(X[i].reshape([28, 28]), interpolation='nearest')
         pass
     f.show()
     plt.draw()
@@ -103,9 +105,8 @@ disc_fake = discriminator(gen_sample, reuse=True)
 
 # Define Lossdisc_input
 disc_loss = tf.losses.sigmoid_cross_entropy(disc_real, Y_feed)
-gen_loss = (
-    -tf.losses.sigmoid_cross_entropy(disc_fake, Y_feed)) + tf.reduce_sum(
-        (disc_input - gen_sample)**2)
+gen_loss = (tf.losses.sigmoid_cross_entropy(
+    disc_fake, Y_feed)) - tf.reduce_sum((disc_input - gen_sample)**2)
 #gen_loss = -(disc_fake - Y_feed)**2 + tf.reduce_sum(
 #    (disc_input - gen_sample)**2)
 """
@@ -128,7 +129,8 @@ gen_model = tflearn.regression(
     trainable_vars=gen_vars,
     batch_size=64,
     name='target_gen',
-    op_name='GEN')
+    op_name='GEN',
+    learning_rate=0.001)
 disc_vars = tflearn.get_layer_variables_by_scope('Discriminator')
 disc_model = tflearn.regression(
     disc_real,
@@ -138,7 +140,8 @@ disc_model = tflearn.regression(
     trainable_vars=disc_vars,
     batch_size=64,
     name='target_disc',
-    op_name='DISC')
+    op_name='DISC',
+    learning_rate=0.01)
 # Define GAN model, that output the generated images.
 global gan
 gan = tflearn.DNN(gen_model)
@@ -148,7 +151,6 @@ gan = tflearn.DNN(gen_model)
 z_dim = 784
 z = np.random.uniform(-1., 1., size=[total_samples, z_dim])
 # Start training, feed both noise and real images.
-
 gan.fit(
     X_inputs={  #gen_input: z,
         gen_input: X,
@@ -156,6 +158,6 @@ gan.fit(
         Y_feed: Y
     },
     Y_targets=None,
-    n_epoch=10,
+    n_epoch=50,
     callbacks=[MonitorCallback()])
 input("Training end")
