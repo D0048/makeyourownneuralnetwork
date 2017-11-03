@@ -16,18 +16,19 @@ class MonitorCallback(tflearn.callbacks.Callback):
 
     def on_epoch_end(self, training_state):
         global gan, X, Y
+        imgs = []
         for i in range(10):
             chan = gan.predict(X[i].reshape([1, 1, 784]))
             chan /= 10
             chan = chan.reshape([28, 28])
             #print(chan)
-
-            if (self.count % 3== 0):
-                imshow(chan)
-                print("Image displayed")
-                #imshow(X[1].reshape([28, 28])) #A 3, for testing purpose only
-                pass
             cli_imshow(chan)
+            imgs.append(chan)
+
+        if (self.count % 3 == 0):
+            imshow(imgs)
+            print("Image displayed")
+            pass
         self.count += 1
         pass
 
@@ -50,7 +51,14 @@ def cli_imshow(img):
 def imshow(img):
     #f=plt.figure()
     #plt.show(block = False)
-    plt.imshow(img, interpolation='nearest')
+    f, a = plt.subplots(2, 10, figsize=(10, 4))
+    for i in range(10):
+        for j in range(2):
+            a[j][i].imshow(img[i], interpolation='nearest')
+            pass
+        pass
+    f.show()
+    plt.draw()
     pass
 
 
@@ -98,6 +106,8 @@ disc_loss = tf.losses.sigmoid_cross_entropy(disc_real, Y_feed)
 gen_loss = (
     -tf.losses.sigmoid_cross_entropy(disc_fake, Y_feed)) + tf.reduce_sum(
         (disc_input - gen_sample)**2)
+#gen_loss = -(disc_fake - Y_feed)**2 + tf.reduce_sum(
+#    (disc_input - gen_sample)**2)
 """
 disc_loss = -tf.reduce_mean(tf.log(disc_real) + tf.log(1. - disc_fake))
 gen_loss = -tf.reduce_mean(
@@ -148,3 +158,4 @@ gan.fit(
     Y_targets=None,
     n_epoch=10,
     callbacks=[MonitorCallback()])
+input("Training end")
