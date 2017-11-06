@@ -14,10 +14,56 @@ z_dim = 200  # Noise data points
 total_samples = len(X)
 
 
+class MonitorCallback(tflearn.callbacks.Callback):
+    itr = 0
+
+    def __init__(self):
+        self.count = 0
+        pass
+
+    def on_epoch_end(self, training_state):
+        f, a = plt.subplots(2, 10, figsize=(10, 4))
+        global gan
+        for i in range(10):
+            for j in range(2):
+                # Noise input.
+                z = np.random.uniform(-1., 1., size=[1, z_dim])
+                # Generate image from noise. Extend to 3 channels for matplot figure.
+                temp = [[ii, ii, ii] for ii in list(gan.predict([z])[0])]
+                a[j][i].imshow(np.reshape(temp, (28, 28, 3)))
+                pass
+            pass
+        if (self.itr % 3 == 0):
+            f.show()
+            plt.draw()
+            pass
+        self.itr += 1
+        pass
+
+def imshow(img):
+    #f=plt.figure()
+    #plt.show(block = False)
+    global X
+    f, a = plt.subplots(2, 10, figsize=(10, 4))
+    for i in range(10):
+        j = 0
+        a[j][i].imshow(img[i], interpolation='nearest')
+        j = 1
+        a[j][i].imshow(X[i].reshape([28, 28]), interpolation='nearest')
+        pass
+    f.show()
+    plt.draw()
+    pass
+
 # Generator
 def generator(x, reuse=False):
     with tf.variable_scope('Generator', reuse=reuse):
         x = tflearn.fully_connected(x, n_units=7 * 7 * 128)
+        x = tf.reshape(x, shape=[-1, 7, 7, 128])
+        x = tflearn.upsample_2d(x, 2)
+        x = tflearn.upsample_2d(x, 2)
+        x = tflearn.conv_2d(x, 1, 1, activation='sigmoid')
+        """
         x = tflearn.batch_normalization(x)
         x = tf.nn.tanh(x)
         x = tf.reshape(x, shape=[-1, 7, 7, 128])
@@ -25,6 +71,7 @@ def generator(x, reuse=False):
         x = tflearn.conv_2d(x, 64, 5, activation='tanh')
         x = tflearn.upsample_2d(x, 2)
         x = tflearn.conv_2d(x, 1, 5, activation='sigmoid')
+        """
         return x
 
 
@@ -38,7 +85,7 @@ def discriminator(x, reuse=False):
         x = tflearn.conv_2d(x, 128, 5, activation='tanh')
         x = tflearn.avg_pool_2d(x, 2)
         x = tflearn.fully_connected(x, 1024, activation='tanh')
-        x = tflearn.fully_connected(x, 2)
+        x = tflearn.fully_connected(x, 1)
         #x = tf.nn.softmax(x)
         return x
 
@@ -54,9 +101,8 @@ disc_fake = discriminator(gen_sample, reuse=True)
 # Define Loss
 #disc_loss = -tf.reduce_mean(tf.log(disc_real) + tf.log(1. - disc_fake))
 #gen_loss = -tf.reduce_mean(tf.log(disc_fake))
-disc_loss = (disc_real - np.asfarray([1, 0]))**2 + (
-    disc_fake - np.asfarray([0, 1]))
-gen_loss = (disc_fake - np.asfarray([0, 1]))**2
+disc_loss = tf.reduce_mean(disc_real)**2 - tf.reduce_mean(disc_fake)**2
+gen_loss = tf.reduce_mean(disc_fake)**2
 
 # Build Training Ops for both Generator and Discriminator.
 # Each network optimization should only update its own variable, thus we need
@@ -72,7 +118,7 @@ gen_model = tflearn.regression(
     batch_size=64,
     name='target_gen',
     op_name='GEN',
-    learning_rate=0.0001)
+    learning_rate=0.01)
 disc_vars = tflearn.get_layer_variables_by_scope('Discriminator')
 disc_model = tflearn.regression(
     disc_real,
@@ -83,20 +129,23 @@ disc_model = tflearn.regression(
     batch_size=64,
     name='target_disc',
     op_name='DISC',
-    learning_rate=0.001)
+    learning_rate=0.0001)
 # Define GAN model, that output the generated images.
+global gan
 gan = tflearn.DNN(gen_model)
 
 # Training
 # Generate noise to feed to the generator
 z = np.random.uniform(-1., 1., size=[total_samples, z_dim])
+
 # Start training, feed both noise and real images.
 gan.fit(
     X_inputs={gen_input: z,
               disc_input: X},
     Y_targets=None,
     n_epoch=1,
-    show_metric=True)
+    show_metric=True,
+    callbacks=[MonitorCallback()])
 
 # Generate images from noise, using the generator network.
 f, a = plt.subplots(2, 10, figsize=(10, 4))
