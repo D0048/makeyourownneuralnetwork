@@ -5,14 +5,6 @@ import numpy as np
 import tensorflow as tf
 import tflearn
 
-# Data loading and preprocessing
-import tflearn.datasets.mnist as mnist
-X, Y, testX, testY = mnist.load_data()
-
-image_dim = 784  # 28*28 pixels
-z_dim = 200  # Noise data points
-total_samples = len(X)
-
 
 class MonitorCallback(tflearn.callbacks.Callback):
     itr = 0
@@ -24,6 +16,7 @@ class MonitorCallback(tflearn.callbacks.Callback):
     def on_epoch_end(self, training_state):
         f, a = plt.subplots(2, 10, figsize=(10, 4))
         global gan
+        imgs = []
         for i in range(10):
             for j in range(2):
                 # Noise input.
@@ -31,29 +24,52 @@ class MonitorCallback(tflearn.callbacks.Callback):
                 # Generate image from noise. Extend to 3 channels for matplot figure.
                 temp = [[ii, ii, ii] for ii in list(gan.predict([z])[0])]
                 a[j][i].imshow(np.reshape(temp, (28, 28, 3)))
+                imgs.append(np.reshape(temp, (28, 28, 3)))
                 pass
             pass
         if (self.itr % 3 == 0):
             f.show()
             plt.draw()
+            #imshow(imgs)
             pass
         self.itr += 1
         pass
 
+
 def imshow(img):
-    #f=plt.figure()
-    #plt.show(block = False)
     global X
     f, a = plt.subplots(2, 10, figsize=(10, 4))
     for i in range(10):
         j = 0
         a[j][i].imshow(img[i], interpolation='nearest')
-        j = 1
-        a[j][i].imshow(X[i].reshape([28, 28]), interpolation='nearest')
         pass
     f.show()
     plt.draw()
     pass
+
+
+from scipy import misc  # feel free to use another image loader
+
+
+def load_imgs():
+    return tflearn.data_utils.image_preloader(
+        target_path='./Converted',
+        image_shape=[256, 256],
+        mode='folder',
+        filter_channel=True)
+    #tflearn.data_utils.build_hdf5_image_dataset(
+    #    target_path='./Converted', image_shape=[256, 256], mode='folder')
+
+
+# Data loading and preprocessing
+#import tflearn.datasets.mnist as mnist
+#X, Y, testX, testY = mnist.load_data()
+X, Y = load_imgs()
+
+image_dim = 256 * 256  # 28*28 pixels
+z_dim = 200  # Noise data points
+total_samples = len(X)
+
 
 # Generator
 def generator(x, reuse=False):
@@ -62,7 +78,7 @@ def generator(x, reuse=False):
         x = tf.reshape(x, shape=[-1, 7, 7, 128])
         x = tflearn.upsample_2d(x, 2)
         x = tflearn.upsample_2d(x, 2)
-        x = tflearn.conv_2d(x, 1, 1, activation='sigmoid')
+        x = tflearn.conv_2d(x, 3, 1, activation='sigmoid')
         """
         x = tflearn.batch_normalization(x)
         x = tf.nn.tanh(x)
@@ -78,13 +94,17 @@ def generator(x, reuse=False):
 # Discriminator
 def discriminator(x, reuse=False):
     with tf.variable_scope('Discriminator', reuse=reuse):
-        print(x)
-        x = tf.reshape(x, [-1, 28, 28, 1])
+        #x = tf.reshape(x, [-1, 28, 28, 1])
         x = tflearn.conv_2d(x, 64, 5, activation='tanh')
         x = tflearn.avg_pool_2d(x, 2)
         x = tflearn.conv_2d(x, 128, 5, activation='tanh')
         x = tflearn.avg_pool_2d(x, 2)
-        x = tflearn.fully_connected(x, 1024, activation='tanh')
+        x = tflearn.conv_2d(x, 1, 1)  #dimensionality reduction
+        print(x)
+        x = tf.reshape(x, [-1, 7* 7])
+        x = tflearn.fully_connected(
+            x, 1024,
+            activation='tanh')  #64 sync with batch size.. ugly solution
         x = tflearn.fully_connected(x, 1)
         #x = tf.nn.softmax(x)
         return x
@@ -92,7 +112,7 @@ def discriminator(x, reuse=False):
 
 # Build Networks
 gen_input = tflearn.input_data(shape=[None, z_dim], name='input_noise')
-disc_input = tflearn.input_data(shape=[None, 784], name='disc_input')
+disc_input = tflearn.input_data(shape=[None, 256, 256, 3], name='disc_input')
 
 gen_sample = generator(gen_input)
 disc_real = discriminator(disc_input)
