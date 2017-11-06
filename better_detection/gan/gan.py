@@ -25,7 +25,7 @@ class MonitorCallback(tflearn.callbacks.Callback):
             cli_imshow(chan)
             imgs.append(chan)
 
-        if (self.count % 30 == 0):
+        if (self.count % 50 == 0):
             imshow(imgs)
             print("Image displayed")
             pass
@@ -105,8 +105,10 @@ disc_fake = discriminator(gen_sample, reuse=True)
 
 # Define Lossdisc_input
 disc_loss = tf.losses.sigmoid_cross_entropy(disc_real, Y_feed)
-gen_loss = (tf.losses.sigmoid_cross_entropy(
-    disc_fake, Y_feed)) - tf.reduce_sum((disc_input - gen_sample)**2)
+#modified-accuracy_removed
+gen_loss = 5*tf.reduce_sum(
+    (disc_input - gen_sample)**2) - (tf.losses.sigmoid_cross_entropy(
+        disc_fake, Y_feed))
 #gen_loss = -(disc_fake - Y_feed)**2 + tf.reduce_sum(
 #    (disc_input - gen_sample)**2)
 """
@@ -158,6 +160,6 @@ gan.fit(
         Y_feed: Y
     },
     Y_targets=None,
-    n_epoch=50,
+    n_epoch=200,
     callbacks=[MonitorCallback()])
 input("Training end")
