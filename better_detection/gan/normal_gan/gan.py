@@ -51,43 +51,56 @@ def imshow(img):
 from scipy import misc  # feel free to use another image loader
 
 
-def load_imgs():
+def img_loader_init():
+    """
     return tflearn.data_utils.image_preloader(
         target_path='./Converted',
-        image_shape=[256, 256],
+        image_shape=(256, 256),
         mode='folder',
         filter_channel=True)
-    #tflearn.data_utils.build_hdf5_image_dataset(
-    #    target_path='./Converted', image_shape=[256, 256], mode='folder')
+    """
+    # Make a queue of file names including all the JPEG images files in the relative
+    # image directory.
+    filename_queue = tf.train.string_input_producer(
+        tf.train.match_filenames_once("./Converted/subclass_dummy/*"))
+
+    # Read an entire image file which is required since they're JPEGs, if the images
+    # are too large they could be split in advance to smaller files or use the Fixed
+    # reader to split up the file.
+    image_reader = tf.WholeFileReader()
+    return image_reader
+
+
+def next_img(reader):
+    # Read a whole file from the queue, the first returned value in the tuple is the
+    # filename which we are ignoring.
+    _, image_file = reader.read(filename_queue)
+
+    # Decode the image as a JPEG file, this will turn it into a Tensor which we can
+    # then use in training.
+    image = tf.image.decode_jpeg(image_file)
+    image=tf.image.resize_image_with_crop_or_pad(image,28,28)
+    return image
 
 
 # Data loading and preprocessing
 #import tflearn.datasets.mnist as mnist
 #X, Y, testX, testY = mnist.load_data()
-X, Y = load_imgs()
+#X, Y = load_imgs()
 
 image_dim = 256 * 256  # 28*28 pixels
 z_dim = 200  # Noise data points
-total_samples = len(X)
+total_samples =998# len(X)
 
 
 # Generator
 def generator(x, reuse=False):
     with tf.variable_scope('Generator', reuse=reuse):
-        x = tflearn.fully_connected(x, n_units=7 * 7 * 128)
-        x = tf.reshape(x, shape=[-1, 7, 7, 128])
-        x = tflearn.upsample_2d(x, 2)
-        x = tflearn.upsample_2d(x, 2)
+        x = tflearn.fully_connected(x, n_units=64 * 64 * 128)
+        x = tf.reshape(x, shape=[-1, 64, 64, 128])
+        x = tflearn.upsample_2d(x, 4)
+        #x = tflearn.upsample_2d(x, 2)
         x = tflearn.conv_2d(x, 3, 1, activation='sigmoid')
-        """
-        x = tflearn.batch_normalization(x)
-        x = tf.nn.tanh(x)
-        x = tf.reshape(x, shape=[-1, 7, 7, 128])
-        x = tflearn.upsample_2d(x, 2)
-        x = tflearn.conv_2d(x, 64, 5, activation='tanh')
-        x = tflearn.upsample_2d(x, 2)
-        x = tflearn.conv_2d(x, 1, 5, activation='sigmoid')
-        """
         return x
 
 
@@ -95,16 +108,14 @@ def generator(x, reuse=False):
 def discriminator(x, reuse=False):
     with tf.variable_scope('Discriminator', reuse=reuse):
         #x = tf.reshape(x, [-1, 28, 28, 1])
-        x = tflearn.conv_2d(x, 64, 5, activation='tanh')
-        x = tflearn.avg_pool_2d(x, 2)
-        x = tflearn.conv_2d(x, 128, 5, activation='tanh')
-        x = tflearn.avg_pool_2d(x, 2)
-        x = tflearn.conv_2d(x, 1, 1)  #dimensionality reduction
+        #x = tflearn.conv_2d(x, 32, 5, activation='tanh')
+        #x = tflearn.avg_pool_2d(x, 2)
+        #x = tflearn.conv_2d(x, 128, 5, activation='tanh')
+        #x = tflearn.avg_pool_2d(x, 2)
+        #x = tflearn.conv_2d(x, 1, 1)  #dimensionality reduction
         print(x)
-        x = tf.reshape(x, [-1, 7* 7])
-        x = tflearn.fully_connected(
-            x, 1024,
-            activation='tanh')  #64 sync with batch size.. ugly solution
+        #x = tf.reshape(x, [-1, 7 * 7])
+        x = tflearn.fully_connected(x, 256, activation='sigmoid')
         x = tflearn.fully_connected(x, 1)
         #x = tf.nn.softmax(x)
         return x
@@ -119,8 +130,6 @@ disc_real = discriminator(disc_input)
 disc_fake = discriminator(gen_sample, reuse=True)
 
 # Define Loss
-#disc_loss = -tf.reduce_mean(tf.log(disc_real) + tf.log(1. - disc_fake))
-#gen_loss = -tf.reduce_mean(tf.log(disc_fake))
 disc_loss = tf.reduce_mean(disc_real)**2 - tf.reduce_mean(disc_fake)**2
 gen_loss = tf.reduce_mean(disc_fake)**2
 
@@ -135,7 +144,7 @@ gen_model = tflearn.regression(
     optimizer='adam',
     loss=gen_loss,
     trainable_vars=gen_vars,
-    batch_size=64,
+    batch_size=1,
     name='target_gen',
     op_name='GEN',
     learning_rate=0.01)
@@ -146,7 +155,7 @@ disc_model = tflearn.regression(
     optimizer='adam',
     loss=disc_loss,
     trainable_vars=disc_vars,
-    batch_size=64,
+    batch_size=1,
     name='target_disc',
     op_name='DISC',
     learning_rate=0.0001)
@@ -159,14 +168,18 @@ gan = tflearn.DNN(gen_model)
 z = np.random.uniform(-1., 1., size=[total_samples, z_dim])
 
 # Start training, feed both noise and real images.
+loader = img_loader_init()
+X = next_img(loader)
+X = tf.reshape(X, [-1, 28, 28, 3])
+"""
 gan.fit(
     X_inputs={gen_input: z,
               disc_input: X},
     Y_targets=None,
     n_epoch=1,
-    show_metric=True,
+    show_metric=False,
     callbacks=[MonitorCallback()])
-
+"""
 # Generate images from noise, using the generator network.
 f, a = plt.subplots(2, 10, figsize=(10, 4))
 for i in range(10):
