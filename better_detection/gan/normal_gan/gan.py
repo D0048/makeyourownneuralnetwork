@@ -52,34 +52,19 @@ from scipy import misc  # feel free to use another image loader
 
 
 def img_loader_init():
-    """
-    return tflearn.data_utils.image_preloader(
-        target_path='./Converted',
-        image_shape=(256, 256),
-        mode='folder',
-        filter_channel=True)
-    """
-    # Make a queue of file names including all the JPEG images files in the relative
-    # image directory.
     filename_queue = tf.train.string_input_producer(
         tf.train.match_filenames_once("./Converted/subclass_dummy/*"))
-
-    # Read an entire image file which is required since they're JPEGs, if the images
-    # are too large they could be split in advance to smaller files or use the Fixed
-    # reader to split up the file.
     image_reader = tf.WholeFileReader()
-    return image_reader
+    return image_reader, filename_queue
 
 
-def next_img(reader):
-    # Read a whole file from the queue, the first returned value in the tuple is the
+def next_img(reader, quene):
     # filename which we are ignoring.
-    _, image_file = reader.read(filename_queue)
+    _, image_file = reader.read(quene)
 
     # Decode the image as a JPEG file, this will turn it into a Tensor which we can
-    # then use in training.
     image = tf.image.decode_jpeg(image_file)
-    image=tf.image.resize_image_with_crop_or_pad(image,28,28)
+    image = tf.image.resize_image_with_crop_or_pad(image, 28, 28)
     return image
 
 
@@ -88,16 +73,16 @@ def next_img(reader):
 #X, Y, testX, testY = mnist.load_data()
 #X, Y = load_imgs()
 
-image_dim = 256 * 256  # 28*28 pixels
+image_dim = 28 * 28  # 28*28 pixels
 z_dim = 200  # Noise data points
-total_samples =998# len(X)
+total_samples = 998  # len(X)
 
 
 # Generator
 def generator(x, reuse=False):
     with tf.variable_scope('Generator', reuse=reuse):
-        x = tflearn.fully_connected(x, n_units=64 * 64 * 128)
-        x = tf.reshape(x, shape=[-1, 64, 64, 128])
+        x = tflearn.fully_connected(x, n_units=7 * 7 * 128)
+        x = tf.reshape(x, shape=[-1, 7, 7, 128])
         x = tflearn.upsample_2d(x, 4)
         #x = tflearn.upsample_2d(x, 2)
         x = tflearn.conv_2d(x, 3, 1, activation='sigmoid')
@@ -123,7 +108,7 @@ def discriminator(x, reuse=False):
 
 # Build Networks
 gen_input = tflearn.input_data(shape=[None, z_dim], name='input_noise')
-disc_input = tflearn.input_data(shape=[None, 256, 256, 3], name='disc_input')
+disc_input = tflearn.input_data(shape=[None, 28, 28, 3], name='disc_input')
 
 gen_sample = generator(gen_input)
 disc_real = discriminator(disc_input)
@@ -168,8 +153,8 @@ gan = tflearn.DNN(gen_model)
 z = np.random.uniform(-1., 1., size=[total_samples, z_dim])
 
 # Start training, feed both noise and real images.
-loader = img_loader_init()
-X = next_img(loader)
+loader, quene = img_loader_init()
+X = next_img(loader, quene)
 X = tf.reshape(X, [-1, 28, 28, 3])
 """
 gan.fit(
@@ -187,8 +172,10 @@ for i in range(10):
         # Noise input.
         z = np.random.uniform(-1., 1., size=[1, z_dim])
         # Generate image from noise. Extend to 3 channels for matplot figure.
-        temp = [[ii, ii, ii] for ii in list(gan.predict([z])[0])]
-        a[j][i].imshow(np.reshape(temp, (28, 28, 3)))
+        #temp = [[ii, ii, ii] for ii in list(gan.predict([z])[0])]
+        #a[j][i].imshow(np.reshape(temp, (28, 28, 3)))
+        img=gan.predict([z]).reshape((28, 28, 3))
+        a[j][i].imshow(img, interpolation='nearest')
 f.show()
 plt.draw()
 plt.waitforbuttonpress()
