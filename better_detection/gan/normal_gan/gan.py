@@ -165,19 +165,19 @@ X, Y = tflearn.data_utils.image_preloader(
     filter_channel=True)
 print("X: {}\nY: {}".format(X,Y))
 """
-print(next_img(loader, quene).eval())
 for i in range(1):
     with tf.Session() as sess:
-        gan.fit(
-            X_inputs={
-                gen_input: z,
-                disc_input: next_img(loader, quene).eval()
-            },
-            Y_targets=None,
-            n_epoch=3,
-            show_metric=False,
-            callbacks=[MonitorCallback()])
+        print(next_img(loader, quene).eval())
+        print(next_img(loader, quene))
+        X = next_img(loader, quene).eval()
         pass
+    gan.fit(
+        X_inputs={gen_input: z,
+                  disc_input: X},
+        Y_targets=None,
+        n_epoch=3,
+        show_metric=False,
+        callbacks=[MonitorCallback()])
     pass
 
 # Generate images from noise, using the generator network.
